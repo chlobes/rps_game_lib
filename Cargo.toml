@@ -1,0 +1,16 @@
+[package]
+name = "rps_game_lib"
+version = "0.1.0"
+authors = ["terepy"]
+edition = "2018"
+
+[dependencies]
+serde = { version = "1.0.98", features = ["derive"] }
+bincode = "1.1.4"
+rand = "0.7.0"
+
+[dependencies.math_lib]
+git = "https://github.com/pypypypypypypypypyp/math_lib"
+
+[dependencies.array_tuple]
+git = "https://github.com/pypypypypypypypypyp/array_tuple"
