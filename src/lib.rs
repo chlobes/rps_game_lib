@@ -1,7 +1,7 @@
 mod prelude;
 pub use crate::prelude::*;
 
-pub const RANGED_MELEE_MULT: f64 = 0.25; //when ranged unit is being attacked by a melee, their damage goes down significantly
+pub const RANGED_MELEE_MULT: f64 = 0.26; //when ranged unit is being attacked by a melee, their damage goes down significantly
 pub const END_FIGHT_HEAL_AMOUNT: f64 = 0.2; //after a fight, all surviving units heal for this fraction of their max hp
 
 #[derive(Debug,Copy,Clone,Serialize,Deserialize)]
@@ -50,7 +50,7 @@ impl Class {
 	
 	pub fn base_hp(&self) -> f64 {
 		match self {
-			Class::Melee => 0.7,
+			Class::Melee => 0.73,
 			Class::Ranged => 1.0,
 		}
 	}
@@ -58,7 +58,7 @@ impl Class {
 	pub fn base_damage(&self) -> f64 {
 		match self {
 			Class::Melee => 1.0,
-			Class::Ranged => 1.45,
+			Class::Ranged => 1.44,
 		}
 	}
 	
@@ -207,7 +207,7 @@ pub struct FightRecording {
 #[derive(Debug,Clone,Serialize,Deserialize)]
 pub enum ServerPacket { //packet from server
 	Team(Vec<Unit>),
-	Opponent(bool, Vec<UnitView>),
+	Opponent(bool, String, Vec<UnitView>),
 	MoveOptions(Vec<MoveOption>),
 	Message(String),
 	Fight(FightRecording),
