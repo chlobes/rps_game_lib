@@ -1,8 +1,8 @@
 mod prelude;
 pub use crate::prelude::*;
 
-pub const RANGED_MELEE_MULT: f64 = 0.26; //when ranged unit is being attacked by a melee, their damage goes down significantly
-pub const END_FIGHT_HEAL_AMOUNT: f64 = 0.2; //after a fight, all surviving units heal for this fraction of their max hp
+pub const RANGED_MELEE_MULT: f64 = 0.25; //when ranged unit is being attacked by a melee, their damage goes down significantly
+pub const END_FIGHT_HEAL_AMOUNT: f64 = 0.1; //after a fight, all surviving units heal for this fraction of their max hp
 
 #[derive(Debug,Copy,Clone,Serialize,Deserialize)]
 pub struct UnitView {
@@ -28,8 +28,8 @@ impl UnitView {
 		self.class.map(|x| x.base_hp()).unwrap_or(1.0) * self.element.map(|x| x.hp_mult()).unwrap_or(1.0)
 	}
 	
-	pub fn damage(&self) -> f64 {
-		self.class.map(|x| x.base_damage()).unwrap_or(1.0) * self.element.map(|x| x.hp_mult()).unwrap_or(1.0)
+	pub fn attack(&self) -> f64 {
+		self.class.map(|x| x.base_attack()).unwrap_or(1.0) * self.element.map(|x| x.hp_mult()).unwrap_or(1.0)
 	}
 }
 
@@ -48,28 +48,28 @@ impl Class {
 		}
 	}
 	
-	pub fn base_hp(&self) -> f64 {
+	pub fn base_hp(self) -> f64 {
 		match self {
-			Class::Melee => 0.73,
+			Class::Melee => 0.74,
 			Class::Ranged => 1.0,
 		}
 	}
 	
-	pub fn base_damage(&self) -> f64 {
+	pub fn base_attack(self) -> f64 {
 		match self {
 			Class::Melee => 1.0,
-			Class::Ranged => 1.44,
+			Class::Ranged => 1.45,
 		}
 	}
 	
-	pub fn base_block(&self) -> f64 {
+	pub fn base_block(self) -> f64 {
 		match self {
 			Class::Melee => 0.05,
 			Class::Ranged => 0.0,
 		}
 	}
 	
-	pub fn base_regen(&self) -> f64 {
+	pub fn base_regen(self) -> f64 {
 		match self {
 			Class::Melee => 0.3,
 			Class::Ranged => 0.2,
@@ -94,7 +94,7 @@ impl Element {
 		}
 	}
 	
-	pub fn hp_mult(&self) -> f64 {
+	pub fn hp_mult(self) -> f64 {
 		match self {
 			Element::Red => 5.0 / 6.0,
 			Element::Green => 6.0 / 5.0,
@@ -102,7 +102,7 @@ impl Element {
 		}
 	}
 	
-	pub fn damage_mult(&self) -> f64 {
+	pub fn attack_mult(self) -> f64 {
 		match self {
 			Element::Red => 6.0 / 5.0,
 			Element::Green => 5.0 / 6.0,
@@ -110,7 +110,7 @@ impl Element {
 		}
 	}
 	
-	pub fn damage_vs(&self, other: &Self) -> f64 {
+	pub fn attack_vs(self, other: Self) -> f64 {
 		match self {
 			Element::Red => match other {
 				Element::Red => 1.0,
@@ -137,71 +137,37 @@ pub struct AuthInfo {
 	pub data: [u64; 4],
 }
 
-use std::io::Read;
-use serde::de::DeserializeOwned;
-
 #[macro_export]
 macro_rules! l {
 	() => { &concat!(file!(), " ", line!()) }
 }
 
-struct DebugStream<R>(R, Vec<u8>);
-
-impl<R: Read> Read for DebugStream<R> {
-	fn read(&mut self, buf: &mut [u8]) -> ::std::io::Result<usize> {
-		let r = self.0.read(buf);
-		self.1 = buf.as_ref().into();
-		r
-	}
-}
-
-
-pub fn try_recv<T: DeserializeOwned, R: Read>(stream: R, limit: Option<u64>) -> Result<Option<T>, Error> {
-	let mut cfg = bincode::config();
-	if let Some(limit) = limit {
-		cfg.limit(limit);
-	}
-	use bincode::ErrorKind::*;
-	
-	let mut stream = DebugStream(stream, Vec::new());
-	
-	match cfg.deserialize_from(&mut stream) {
-		Ok(result) => {
-			Ok(Some(result))
-		},
-		Err(e) => match *e {
-			Io(e) => {
-				match e.kind() {
-					std::io::ErrorKind::WouldBlock => {
-						Ok(None)
-					},
-					_ => Err(Box::new(e)),
-				}
-			},
-			_ => {
-				println!("error in try_recv, binary: {:?}",stream.1);
-				Err(e)
-			},
-		}
-	}
-}
-
-#[derive(Debug,Copy,Clone,Serialize,Deserialize)]
+#[derive(Debug,Clone,Serialize,Deserialize)]
 pub struct Unit {
 	pub class: Class,
 	pub element: Element,
 	pub hp: f64,
 	pub max_hp: f64,
+	pub perks: Vec<Perk>,
+	pub perk_choice: Option<[Perk; 3]>,
 }
 
 #[derive(Debug,Copy,Clone,Serialize,Deserialize)]
 pub struct MoveOption {
 	pub id: u64,
+	pub max_group_size: usize,
 }
 
 #[derive(Debug,Clone,Serialize,Deserialize)]
 pub struct FightRecording {
 	pub won: bool,
+}
+
+#[derive(Debug,Clone,Serialize,Deserialize)]
+pub struct Perk {
+	pub color: [f32; 3],
+	pub desc: String,
+	pub priority: u8,
 }
 
 #[derive(Debug,Clone,Serialize,Deserialize)]
@@ -218,6 +184,7 @@ pub enum ClientPacket { //packet from client
 	Move(u64),
 	Fight(bool),
 	Rearrange(usize, usize),
+	PerkChoice(usize, usize),
 	Disconnect,
 }
 
